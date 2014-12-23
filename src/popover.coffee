@@ -3,7 +3,7 @@ Ember.Mixin.create Ember.Widgets.StyleBindingsMixin,
 Ember.Widgets.BodyEventListener,
   layoutName: 'popover'
   classNames: ['popover']
-  classNameBindings: ['isShowing:in', 'fade', 'placement']
+  classNameBindings: ['isShowing:in', 'fadeEnabled:fade', 'placement']
   styleBindings: ['left', 'top', 'display', 'visibility']
 
   # The target element to anchor the popover to
@@ -11,9 +11,16 @@ Ember.Widgets.BodyEventListener,
   contentViewClass: null
 
   fade: yes
+  escToCancel: yes
   placement: 'top'
   display: 'block'
   visibility: 'hidden'
+  debounceTime: 100
+
+  fadeEnabled: Ember.computed ->
+    return false if Ember.Widgets.DISABLE_ANIMATIONS
+    @get('fade')
+  .property 'fade'
 
   left: 0
   top: 0
@@ -33,26 +40,28 @@ Ember.Widgets.BodyEventListener,
     return @get('contentViewClass') if @get('contentViewClass')
     Ember.View.extend
       content: Ember.computed.alias 'parentView.content'
-      templateName: 'view_parent_view_content'
+      templateName: 'view-parent-view-content'
   .property 'contentViewClass'
 
   didInsertElement: ->
     @_super()
     # we want the view to render first and then we snap to position after
     # it is renered
-    Ember.run.next this, ->
-      @snapToPosition()
-      @set 'visibility', 'visible'
-      @set 'isShowing', yes
+    @snapToPosition()
+    @set 'visibility', 'visible'
+    @set 'isShowing', yes
 
   bodyClick: -> @hide()
 
   hide: ->
     return if @get('isDestroyed')
     @set('isShowing', no)
-    @$().one $.support.transition.end, =>
-      # We need to wrap this in a run-loop otherwise ember-testing will complain
-      # about auto run being disabled when we are in testing mode.
+    if @get('fadeEnabled')
+      @$().one $.support.transition.end, =>
+        # We need to wrap this in a run-loop otherwise ember-testing will complain
+        # about auto run being disabled when we are in testing mode.
+        Ember.run this, @destroy
+    else
       Ember.run this, @destroy
 
   ###
@@ -96,12 +105,22 @@ Ember.Widgets.BodyEventListener,
 
   snapToPosition: ->
     $target      = $(@get('targetElement'))
-    return if @get('state') isnt 'inDOM' or Ember.isEmpty($target)
+    return if (@get('_state') or @get('state')) isnt 'inDOM'
     actualWidth  = @$()[0].offsetWidth
     actualHeight = @$()[0].offsetHeight
-    pos = @getOffset($target)
-    pos.width  = $target[0].offsetWidth
-    pos.height = $target[0].offsetHeight
+    # For context menus where the position is set directly, rather
+    # than by a target element, $target is empty. Therefore, we
+    # set top, left, width, and height manually.
+    if Ember.isEmpty($target)
+      pos =
+        top: this.get 'top'
+        left: this.get 'left'
+        width: 0
+        height: 0
+    else
+      pos = @getOffset($target)
+      pos.width  = $target[0].offsetWidth
+      pos.height = $target[0].offsetHeight
 
     switch @get('placement')
       when 'bottom'
@@ -137,7 +156,9 @@ Ember.Widgets.BodyEventListener,
         @set 'left',  pos.left + pos.width
         break
     @correctIfOffscreen()
-    @positionArrow()
+    # In the case of a context menu with no target element, there is no
+    # need to display a position arrow.
+    @positionArrow() unless Ember.isEmpty($target)
 
   positionArrow: ->
     $target = $(@get('targetElement'))
@@ -168,11 +189,17 @@ Ember.Widgets.BodyEventListener,
     if @get('top') < 0
       @set 'top', @get('marginTop')
 
+  keyHandler: Ember.computed ->
+    (event) =>
+      if event.keyCode is 27 and @get('escToCancel') # ESC
+        @hide()
+
   # We need to put this in a computed because this is attached to the
   # resize and scroll events before snapToPosition is defined. We
   # throttle for 100 ms because that looks nice.
   debounceSnapToPosition: Ember.computed ->
-    Ember.run.debounce(this, @snapToPosition, 100)
+    =>
+      Ember.run.debounce(this, @snapToPosition, @get('debounceTime'))
 
   _setupDocumentHandlers: ->
     @_super()
@@ -185,6 +212,7 @@ Ember.Widgets.BodyEventListener,
     unless @_scrollHandler
       @_scrollHandler = @get('debounceSnapToPosition')
       $(document).on 'scroll', @_scrollHandler
+    $(document).on 'keyup', @get('keyHandler')
 
   _removeDocumentHandlers: ->
     @_super()
@@ -194,6 +222,7 @@ Ember.Widgets.BodyEventListener,
     @_resizeHandler = null
     $(document).off 'scroll', @_scrollHandler
     @_scrollHandler = null
+    $(document).off 'keyup', @get('keyHandler')
 
 Ember.Widgets.PopoverComponent = Ember.Component.extend(Ember.Widgets.PopoverMixin)
 
@@ -205,7 +234,8 @@ Ember.Widgets.PopoverComponent.reopenClass
     @hideAll()
     rootElement = options.rootElement or @rootElement
     popover = this.create options
-    popover.set 'container', popover.get('targetObject.container')
+    if popover.get('targetObject.container')
+      popover.set 'container', popover.get('targetObject.container')
     popover.appendTo rootElement
     popover
 

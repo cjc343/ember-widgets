@@ -20,6 +20,12 @@
         nothing else is selected.</p></td>
     </tr>
     <tr>
+      <td>placeholder</td>
+      <td>undefined</td>
+      <td><p>The placeholder text to be displayed in the search box when you
+        click on the select.</p></td>
+    </tr>
+    <tr>
       <td>highlightedIndex</td>
       <td>-1</td>
       <td><p>The index of the select item that is highlighted.</p></td>
@@ -97,6 +103,23 @@
   </table>
 
   <hr>
+  <h2>Ember.Widgets.MultiSelectComponent Options</h2>
+  <table class="table ember-widgets-options">
+    <tr>
+      <td>placeholder</td>
+      <td>undefined</td>
+      <td><p>The placeholder text to be displayed in multi-select search box
+        before anything has been selected.</p></td>
+    </tr>
+    <tr>
+      <td>persistentPlaceholder</td>
+      <td>undefined</td>
+      <td><p>The placeholder text to be displayed in multi-select search box,
+        even if one or more options are already selected.</p></td>
+    </tr>
+  </table>
+
+  <hr>
   <h2>Ember.Widgets.PopoverComponent Options</h2>
   <table class="table ember-widgets-options">
     <tr>
@@ -107,7 +130,7 @@
     <tr>
       <td>targetElement</td>
       <td>null</td>
-      <td><p>The element this popover will be attached to.</p></td>
+      <td><p>The element this popover will be attached to. If null, the popover will be positioned absolutely based on top and left.</p></td>
     </tr>
     <tr>
       <td>placement</td>
@@ -184,6 +207,12 @@
       <td>'.modal-backdrop'</td>
       <td><p></p></td>
     </tr>
+    <tr>
+      <td>size</td>
+      <td>'normal'</td>
+      <td><p>The size of the bootstrap modal.  Other options are 'small'
+        and 'large'.</p></td>
+    </tr>
   </table>
 
   <hr>
@@ -240,6 +269,11 @@
         buttons with values true and false. The bound boolean variable can now switch
         values between true and false based on which radio button is chosen.</p></td>
     </tr>
+    <tr>
+      <td>disabled</td>
+      <td>false</td>
+      <td><p>Whether or not the entire radio button group is disabled.</p></td>
+    </tr>
   </table>
 
   <hr>
@@ -253,6 +287,12 @@
       <td>value</td>
       <td>null</td>
       <td><p>The value that the button corresponds to.</p></td>
+    </tr>
+    <tr>
+      <td>disabled</td>
+      <td>false</td>
+      <td><p>If the entire group is not disabled, whether or not this particular
+        radio button is disabled.</p></td>
     </tr>
   </table>
 </div>

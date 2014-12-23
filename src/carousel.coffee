@@ -10,14 +10,14 @@
 Ember.Widgets.CarouselComponent = Ember.Component.extend
   layoutName: 'carousel'
   classNames: ['carousel', 'slide']
-  classNameBindings: ['sliding']
+  classNameBindings: Ember.A ['sliding']
   activeIndex: 0
 
   didInsertElement: ->
     # suppose a content array is not specified in use case 1, we use jquery to
     # figure out how many carousel items are there. This allows us to generate
     # the correct number of carousel indicator
-    @set 'content', new Array(@$('.item').length) if not @get('content')
+    @set 'content', Ember.A new Array(@$('.item').length) if not @get('content')
 
   actions:
     prev: ->
@@ -27,7 +27,7 @@ Ember.Widgets.CarouselComponent = Ember.Component.extend
       nextIndex = activeIndex - 1
       nextIndex = if nextIndex < 0 then contentLength - 1 else nextIndex
       @slide 'prev', nextIndex
-  
+
     next: ->
       return if @get('sliding')
       activeIndex = @get 'activeIndex'
@@ -55,15 +55,16 @@ Ember.Widgets.CarouselComponent = Ember.Component.extend
     $active = $(@$('.item').get(@get('activeIndex')))
     $next = $(@$('.item').get(nextIndex))
 
-    @set 'sliding', yes
-    $next.addClass(type)
-    # force reflow
-    $next[0].offsetWidth
-    $active.addClass(direction)
-    $next.addClass(direction)
+    unless Ember.Widgets.DISABLE_ANIMATIONS
+      @set 'sliding', yes
+      $next.addClass(type)
+      # force reflow
+      $next[0].offsetWidth
+      $active.addClass(direction)
+      $next.addClass(direction)
 
     # Bootstrap has this method for listening on end of transition
-    $next.one $.support.transition.end, =>
+    @_onTransitionEnd $next, =>
       # This code is async and ember-testing requires us to wrap any code with
       # asynchronous side-effects in an Ember.run
       Ember.run this, ->
@@ -71,6 +72,12 @@ Ember.Widgets.CarouselComponent = Ember.Component.extend
         $next.removeClass([type, direction].join(' ')).addClass('active')
         $active.removeClass(['active', direction].join(' '))
         @set 'sliding', no
+
+  _onTransitionEnd: ($el, callback) ->
+    if Ember.Widgets.DISABLE_ANIMATIONS
+      callback()
+    else
+      $el.one $.support.transition.end, callback
 
 Ember.Widgets.CarouselIndicator = Ember.View.extend
   classNameBindings: 'isActive:active'

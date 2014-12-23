@@ -1,20 +1,13 @@
-get = (object, key) ->
-  return undefined unless object
-  return object    unless key
-  object.get?(key) or object[key]
-
-set = (object, key, value) ->
-  return unless object and key
-  object.set?(key, value) or object[key] = value;
-
 # The view for each item in the select.
 Ember.Widgets.SelectOptionView = Ember.ListItemView.extend
   tagName: 'li'
-  templateName: 'select_item'
-  layoutName: 'select_item_layout'
+  templateName: 'select-item'
+  layoutName: 'select-item-layout'
   classNames: 'ember-select-result-item'
-  classNameBindings: ['content.isGroupOption:ember-select-group',
-                      'isHighlighted:highlighted']
+  classNameBindings: Ember.A [
+    'content.isGroupOption:ember-select-group'
+    'isHighlighted:highlighted'
+  ]
   labelPath: Ember.computed.alias  'controller.optionLabelPath'
 
   isHighlighted: Ember.computed ->
@@ -62,12 +55,13 @@ Ember.Widgets.SelectOptionView = Ember.ListItemView.extend
 Ember.Widgets.SelectComponent =
 Ember.Component.extend Ember.Widgets.BodyEventListener,
 Ember.AddeparMixins.ResizeHandlerMixin,
-  layoutName:       'select'
+  layoutName:         'select'
   classNames:         'ember-select'
-  attributeBindings: ['tabindex']
-  classNameBindings: ['showDropdown:open', 'isDropup:dropup']
+  attributeBindings:  Ember.A ['tabindex']
+  classNameBindings:  Ember.A ['showDropdown:open', 'isDropup:dropup']
   itemViewClass:      'Ember.Widgets.SelectOptionView'
   prompt:             'Select a Value'
+  placeholder:        undefined
   disabled: no
 
   # we need to set tabindex so that div responds to key events
@@ -82,6 +76,8 @@ Ember.AddeparMixins.ResizeHandlerMixin,
   rowHeight: 26
   # Option to indicate whether we should sort the labels
   sortLabels: yes
+  # Use title on labels, containing content of the labels
+  titleOnOptions: no
   # If isSelect is true, we will not show the search box
   isSelect: no
 
@@ -99,7 +95,7 @@ Ember.AddeparMixins.ResizeHandlerMixin,
   dropdownMenuClass: ''
 
   # The list of options
-  content: []
+  content: Ember.A []
   selection: null
   query: ''
   optionLabelPath: ''
@@ -112,46 +108,44 @@ Ember.AddeparMixins.ResizeHandlerMixin,
   selectMenuView: null
 
   updateDropdownLayout: Ember.observer ->
-    return if @get('_state') isnt 'inDOM' or @get('showDropdown') is no
+    return if (@get('_state') or @get('state')) isnt 'inDOM' or @get('showDropdown') is no
 
     # Render the dropdown in a hidden state to get the size
     @$('.js-dropdown-menu').css('visibility', 'hidden');
 
     # Render the dropdown completely into the DOM for offset()
-    Ember.run.next this, ->
-      dropdownButton = @$('.js-dropdown-toggle')[0]
-      dropdownButtonHeight = @$(dropdownButton).outerHeight()
-      dropdownButtonOffset = @$(dropdownButton).offset()
+    dropdownButton = @$('.js-dropdown-toggle')[0]
+    dropdownButtonHeight = @$(dropdownButton).outerHeight()
+    dropdownButtonOffset = @$(dropdownButton).offset()
 
-      dropdownMenu = @$('.js-dropdown-menu')[0]
-      dropdownMenuHeight = @$(dropdownMenu).outerHeight()
-      dropdownMenuWidth = @$(dropdownMenu).outerWidth()
-      dropdownMenuOffset = @$(dropdownMenu).offset()
+    dropdownMenu = @$('.js-dropdown-menu')[0]
+    dropdownMenuHeight = @$(dropdownMenu).outerHeight()
+    dropdownMenuWidth = @$(dropdownMenu).outerWidth()
+    dropdownMenuOffset = @$(dropdownMenu).offset()
 
-      # Only switch from dropUp to dropDown if there's this much extra space
-      # under where the dropDown would be. This prevents the popup from jiggling
-      # up and down
-      dropdownMargin = 15
+    # Only switch from dropUp to dropDown if there's this much extra space
+    # under where the dropDown would be. This prevents the popup from jiggling
+    # up and down
+    dropdownMargin = 15
 
-      if @get('isDropup')
-        dropdownMenuBottom = dropdownButtonOffset.top + dropdownButtonHeight +
-          dropdownMenuHeight + dropdownMargin
-      else
-        dropdownMenuBottom = dropdownMenuOffset.top + dropdownMenuHeight
+    if @get('isDropup')
+      dropdownMenuBottom = dropdownButtonOffset.top + dropdownButtonHeight +
+        dropdownMenuHeight + dropdownMargin
+    else
+      dropdownMenuBottom = dropdownMenuOffset.top + dropdownMenuHeight
 
-      # regardless of whether it is dropping up or down, we want to know
-      # where dropUp will put the top since we don't want this to fall
-      # above the top of the screen
-      dropupMenuTop = dropdownButtonOffset.top - dropdownMenuHeight -
-        dropdownMargin
+    # regardless of whether it is dropping up or down, we want to know
+    # where dropUp will put the top since we don't want this to fall
+    # above the top of the screen
+    dropupMenuTop = dropdownButtonOffset.top - dropdownMenuHeight -
+      dropdownMargin
 
-      @set 'isDropup', dropupMenuTop > window.scrollY and
-        dropdownMenuBottom > window.innerHeight
-      @set 'isDropdownMenuPulledRight', dropdownButtonOffset.left +
-        dropdownMenuWidth + dropdownMargin > window.innerWidth
+    @set 'isDropup', dropupMenuTop > window.scrollY and
+      dropdownMenuBottom > window.innerHeight
+    @set 'isDropdownMenuPulledRight', dropdownButtonOffset.left +
+      dropdownMenuWidth + dropdownMargin > window.innerWidth
 
-      @$('.js-dropdown-menu').css('visibility', 'visible');
-      return
+    @$('.js-dropdown-menu').css('visibility', 'visible');
   , 'showDropdown'
 
   onResizeEnd: ->
@@ -178,18 +172,19 @@ Ember.AddeparMixins.ResizeHandlerMixin,
   .property 'itemView'
 
   selectedLabel: Ember.computed ->
-    get @get('selection'), @get('optionLabelPath')
+    Ember.get @get('selection'), @get('optionLabelPath')
   .property 'selection', 'optionLabelPath'
 
   searchView: Ember.TextField.extend
-    placeholder: 'Search'
+    placeholder: Ember.computed.alias 'parentView.placeholder'
     valueBinding: 'parentView.query'
     # we want to focus on search input when dropdown is opened. We need to put
     # this in a run loop to wait for the event that triggers the showDropdown
     # to finishes before trying to focus the input. Otherwise, focus when be
     # "stolen" from us.
     showDropdownDidChange: Ember.observer ->
-      Ember.run.next this, -> @$().focus() if @get('_state') is 'inDOM'
+      Ember.run.schedule 'afterRender', this, ->
+          @$().focus() if (@get('_state') or @get('state')) is 'inDOM'
     , 'parentView.showDropdown'
 
   # This is a hack. Ember.ListView doesn't handle case when total height
@@ -202,14 +197,32 @@ Ember.AddeparMixins.ResizeHandlerMixin,
 
   # the list of content that is filtered down based on the query entered
   # in the textbox
-  filteredContent: Ember.computed ->
-    content = @get 'content'
-    query   = @get 'query'
-    return [] unless content
-    filteredContent = @get('content').filter (item) => @matcher(query, item)
-    return filteredContent unless @get('sortLabels')
-    _.sortBy filteredContent, (item) => get(item, @get('optionLabelPath'))?.toLowerCase()
-  .property 'content.@each', 'query', 'optionLabelPath', 'sortLabels'
+  preparedContent: Ember.computed ->
+    if @get('sortLabels') then @get('sortedFilteredContent') else @get('filteredContent')
+  .property 'sortLabels', 'filteredContent', 'sortedFilteredContent'
+
+  contentProxy: Ember.computed ->
+    matcher = (searchText, item) => @matcher(searchText, item)
+    optionLabelPath = @get('optionLabelPath')
+    query = @get('query')
+
+    ContentProxy = Ember.ObjectProxy.extend
+      filteredContent:  Ember.computed ->
+        (@get('content') or []).filter (item) ->
+          matcher(query, item)
+      .property("content.@each.#{optionLabelPath}")
+
+      sortedFilteredContent: Ember.computed ->
+        _.sortBy @get('filteredContent'), (item) =>
+          Ember.get(item, optionLabelPath)?.toLowerCase()
+      .property("filteredContent")
+
+    ContentProxy.create
+      content: @get('content')
+  .property 'content', 'optionLabelPath', 'query'
+
+  filteredContent: Ember.computed.alias 'contentProxy.filteredContent'
+  sortedFilteredContent: Ember.computed.alias 'contentProxy.sortedFilteredContent'
 
   # the list of content that is grouped by the content in the optionGroupPath
   # e.g. {name: 'Addepar', location: 'Mountain View'}
@@ -220,15 +233,15 @@ Ember.AddeparMixins.ResizeHandlerMixin,
   #   Google
   groupedContent: Ember.computed ->
     path    = @get 'optionGroupPath'
-    content = @get 'filteredContent'
+    content = @get 'preparedContent'
     return content unless path
-    groups  = _.groupBy content, (item) -> get(item, path)
+    groups  = _.groupBy content, (item) -> Ember.get(item, path)
     result  = Ember.A()
     _.keys(groups).sort().forEach (key) ->
       result.pushObject  Ember.Object.create isGroupOption: yes, name:key
       result.pushObjects groups[key]
     result
-  .property 'filteredContent', 'optionGroupPath'
+  .property 'preparedContent', 'optionGroupPath', 'labels.[]'
 
   hasNoResults: Ember.computed.empty 'filteredContent'
 
@@ -242,7 +255,7 @@ Ember.AddeparMixins.ResizeHandlerMixin,
     else # getter
       valuePath = @get 'optionValuePath'
       selection = @get 'selection'
-      if valuePath then get(selection, valuePath) else selection
+      if valuePath then Ember.get(selection, valuePath) else selection
   .property 'selection'
 
   didInsertElement: ->
@@ -252,7 +265,7 @@ Ember.AddeparMixins.ResizeHandlerMixin,
   # It matches the item label with the query. This can be overrideen for better
   matcher: (searchText, item) ->
     return yes unless searchText
-    label = get(item, @get('optionLabelPath'))
+    label = Ember.get(item, @get('optionLabelPath'))
     escapedSearchText = searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&")
     regex = new RegExp(escapedSearchText, 'i')
     regex.test(label)
@@ -268,10 +281,11 @@ Ember.AddeparMixins.ResizeHandlerMixin,
   , 'content.@each'
 
   selectableOptionsDidChange: Ember.observer ->
-    highlighted = @get('highlighted')
-    if not @get('selectableOptions').contains(highlighted)
-      @set 'highlighted', @get('selectableOptions.firstObject')
-  , 'selectableOptions'
+    if @get('showDropdown')
+      highlighted = @get('highlighted')
+      if not @get('selectableOptions').contains(highlighted)
+        @set 'highlighted', @get('selectableOptions.firstObject')
+  , 'selectableOptions', 'showDropdown'
 
   ###
   # SELECTION RELATED
@@ -286,14 +300,16 @@ Ember.AddeparMixins.ResizeHandlerMixin,
   # All the selectable options - namely everything except for the non-group
   # options that are artificially created.
   selectableOptions: Ember.computed ->
-    (@get('groupedContent') or []).filter (item) ->
-      not get(item, 'isGroupOption')
+    Ember.A(
+      (@get('groupedContent') or []).filter (item) ->
+        not Ember.get(item, 'isGroupOption')
+    )
   .property 'groupedContent'
 
   # The option that is currently highlighted.
   highlighted: Ember.computed (key, value) ->
-    content   = @get('selectableOptions') or []
-    value     = value or []
+    content   = @get('selectableOptions') or Ember.A []
+    value     = value or Ember.A []
     if arguments.length is 1 # getter
       index = @get 'highlightedIndex'
       value = content.objectAt index
@@ -354,6 +370,7 @@ Ember.AddeparMixins.ResizeHandlerMixin,
   ensureVisible: (index) ->
     $listView  = @$('.ember-list-view')
     listView   = Ember.View.views[$listView.attr('id')]
+    return unless listView
     startIndex = listView._startingIndex()
     numRows    = listView._childViewCount() - 1
     endIndex   = startIndex + numRows
@@ -376,6 +393,7 @@ Ember.AddeparMixins.ResizeHandlerMixin,
       @toggleProperty 'showDropdown'
 
     hideDropdown: (event) ->
+      return if @get('isDestroyed') or @get('isDestroying')
       @set 'showDropdown', no
 
 Ember.Handlebars.helper('select-component', Ember.Widgets.SelectComponent)

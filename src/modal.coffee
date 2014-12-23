@@ -2,7 +2,7 @@ Ember.Widgets.ModalComponent =
 Ember.Component.extend Ember.Widgets.StyleBindingsMixin,
   layoutName: 'modal'
   classNames: ['modal']
-  classNameBindings: ['isShowing:in', 'hasCloseButton::has-no-close-button','fade']
+  classNameBindings: ['isShowing:in', 'hasCloseButton::has-no-close-button', 'fadeEnabled:fade']
   modalPaneBackdrop: '<div class="modal-backdrop"></div>'
   bodyElementSelector: '.modal-backdrop'
 
@@ -17,17 +17,33 @@ Ember.Component.extend Ember.Widgets.StyleBindingsMixin,
   cancelText:       "Cancel"
   closeText:        null
   content:          ""
+  size:             "normal"
   isValid: true
+
+  fadeEnabled: Ember.computed ->
+    return false if Ember.Widgets.DISABLE_ANIMATIONS
+    @get('fade')
+  .property 'fade'
 
   confirm: Ember.K
   cancel: Ember.K
   close: Ember.K
 
+  headerViewClass: Ember.View.extend
+    templateName: 'modal_header'
+
   contentViewClass: Ember.View.extend
     template: Ember.Handlebars.compile("<p>{{content}}</p>")
 
   footerViewClass:  Ember.View.extend
-    templateName: 'modal_footer'
+    templateName: 'modal-footer'
+
+  _headerViewClass: Ember.computed ->
+    headerViewClass = @get 'headerViewClass'
+    if typeof headerViewClass is 'string'
+      Ember.get headerViewClass
+    else headerViewClass
+  .property 'headerViewClass'
 
   _contentViewClass: Ember.computed ->
     contentViewClass = @get 'contentViewClass'
@@ -42,6 +58,13 @@ Ember.Component.extend Ember.Widgets.StyleBindingsMixin,
       Ember.get footerViewClass
     else footerViewClass
   .property 'footerViewClass'
+
+  sizeClass: Ember.computed ->
+    switch @get 'size'
+      when 'large' then 'modal-lg'
+      when 'small' then 'modal-sm'
+      else ''
+  .property 'size'
 
   actions:
     # Important: we do not want to send cancel after modal is closed.
@@ -93,14 +116,13 @@ Ember.Component.extend Ember.Widgets.StyleBindingsMixin,
     @_backdrop.remove() if @_backdrop
 
   keyHandler: Ember.computed ->
-    fn = (event) ->
+    (event) =>
       if event.which is 27 and @get('escToCancel') # ESC
-        $(document).trigger('modal:hide')
-    _.bind(fn, @)
+        @send 'sendCancel'
 
   click: (event) ->
-    return if event.target isnt event.currentTarget
-    @hide() unless @get('enforceModality')
+    return unless event.target is event.currentTarget
+    @send 'sendCancel' unless @get('enforceModality')
 
   hide: ->
     @set 'isShowing', no
@@ -109,15 +131,18 @@ Ember.Component.extend Ember.Widgets.StyleBindingsMixin,
     $(document.body).removeClass('modal-open')
     # fade out backdrop
     @_backdrop.removeClass('in') if @_backdrop
-    # destroy modal after backdroop faded out. We need to wrap this in a
-    # run-loop otherwise ember-testing will complain about auto run being
-    # disabled when we are in testing mode.
-    @$().one $.support.transition.end, => Ember.run this, @destroy
+    if @get('fadeEnabled')
+      # destroy modal after backdroop faded out. We need to wrap this in a
+      # run-loop otherwise ember-testing will complain about auto run being
+      # disabled when we are in testing mode.
+      @$().one $.support.transition.end, => Ember.run this, @destroy
+    else
+      Ember.run this, @destroy
 
   _appendBackdrop: ->
     parentLayer = @$().parent()
     modalPaneBackdrop = @get 'modalPaneBackdrop'
-    @_backdrop = jQuery(modalPaneBackdrop).addClass('fade') if @get('fade')
+    @_backdrop = jQuery(modalPaneBackdrop).addClass('fade') if @get('fadeEnabled')
     @_backdrop.appendTo(parentLayer)
     # show backdrop in next run loop so that it can fade in
     Ember.run.next this, -> @_backdrop.addClass('in')
@@ -145,7 +170,8 @@ Ember.Widgets.ModalComponent.reopenClass
     @hideAll()
     rootElement = options.rootElement or @rootElement
     modal = this.create options
-    modal.set 'container', modal.get('targetObject.container')
+    if modal.get('targetObject.container')
+      modal.set 'container', modal.get('targetObject.container')
     modal.appendTo rootElement
     modal
 

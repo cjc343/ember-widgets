@@ -1,15 +1,6 @@
-get = (object, key) ->
-  return undefined unless object
-  return object    unless key
-  object.get?(key) or object[key]
-
-set = (object, key, value) ->
-  return unless object and key
-  object.set?(key, value) or object[key] = value;
-
 Ember.Widgets.MultiSelectOptionView = Ember.View.extend
   tagName: 'li'
-  templateName: 'multi_select_item'
+  templateName: 'multi-select-item'
   classNames:   'ember-select-search-choice'
   labelPath: Ember.computed.alias 'controller.optionLabelPath'
 
@@ -28,13 +19,17 @@ Ember.Widgets.MultiSelectComponent = Ember.Widgets.SelectComponent.extend
   layoutName: 'multi-select'
   selections: undefined
   choicesFieldClass: ''
+  placeholder: undefined
+  persistentPlaceholder: undefined
 
   values: Ember.computed (key, value) ->
     if arguments.length is 2 # setter
       return unless value
       valuePath = @get 'optionValuePath'
-      @set 'selections', @get('content').filter (item) ->
-        value.contains get(item, valuePath)
+      @set 'selections', Ember.A(
+        @get('content').filter (item) ->
+          value.contains Ember.get(item, valuePath)
+      )
       value
     else # getter
       valuePath = @get 'optionValuePath'
@@ -44,22 +39,41 @@ Ember.Widgets.MultiSelectComponent = Ember.Widgets.SelectComponent.extend
 
   selectionItemView: Ember.Widgets.MultiSelectOptionView
 
+  # Invisible span used to make sure there is a good amount of room for either
+  # the placeholder values, or for the query the user has entered.
+  invisiblePlaceholderText: Ember.computed ->
+    return @get('query') if @get 'query'
+    return @get('persistentPlaceholder') if @get('selections.length')
+    @get('placeholder') or @get('persistentPlaceholder')
+  .property 'query', 'placeholder', 'persistentPlaceholder', 'selections.length'
+
   searchView: Ember.TextField.extend
     class: 'ember-select-input'
     valueBinding: 'parentView.query'
     focusIn: (event) -> @set 'parentView.showDropdown', yes
+    placeholder: Ember.computed ->
+      if @get('parentView.selections.length')
+        return @get('parentView.persistentPlaceholder')
+      @get('parentView.placeholder') or @get('parentView.persistentPlaceholder')
+    .property('parentView.placeholder', 'parentView.persistentPlaceholder',
+      'parentView.selections.length')
 
   # the list of content that is filtered down based on the query entered
   # in the textbox
-  filteredContent: Ember.computed ->
+  preparedContent: Ember.computed ->
     content = @get 'content'
-    query   = @get 'query'
     selections = @get 'selections'
-    return [] unless content and selections
+    return Ember.A [] unless content and selections
     # excludes items that are already selected
-    @get('content').filter (item) =>
-      not selections.contains(item) and @matcher(query, item)
-  .property 'content.@each', 'optionLabelPath', 'query', 'selections.@each'
+
+    if @get('sortLabels')
+      @get('sortedFilteredContent').filter (item) ->
+        not selections.contains(item)
+    else
+      @get('filteredContent').filter (item) ->
+        not selections.contains(item)
+  .property('content.@each', 'filteredContent.[]', 'sortedFilteredContent.[]',
+    'selections.@each', 'sortLabels')
 
   # uses single select's "selection" value - adds it to selections and
   # then clears the selection value so that it can be re-selected
@@ -80,8 +94,8 @@ Ember.Widgets.MultiSelectComponent = Ember.Widgets.SelectComponent.extend
     # the value to [] if its value is undefined but the bindings would not have
     # realized a change and fail to fire.
     @_super()
-    @set 'selections', [] unless @get('selections')
-    @set 'values', [] unless @get('values')
+    @set 'selections', Ember.A [] unless @get('selections')
+    @set 'values', Ember.A [] unless @get('values')
 
   deletePressed: (event) ->
     if event.target.selectionStart == 0
@@ -94,4 +108,7 @@ Ember.Widgets.MultiSelectComponent = Ember.Widgets.SelectComponent.extend
     removeSelectItem: (item) ->
       @removeSelectItem(item)
 
-Ember.Handlebars.helper('multi-select-component', Ember.Widgets.MultiSelectComponent)
+Ember.Handlebars.helper(
+  'multi-select-component'
+  Ember.Widgets.MultiSelectComponent
+)

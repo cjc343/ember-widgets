@@ -1,7 +1,8 @@
 ## Used for bundling files together using neuter
 
 Ember.Widgets = Ember.Namespace.create()
-Ember.Widgets.VERSION = '0.1.0'
+Ember.Widgets.VERSION = '0.2.0'
+Ember.Widgets.DISABLE_ANIMATIONS = false
 Ember.libraries?.register 'Ember Widgets', Ember.Widgets.VERSION
 
 # Dependencies

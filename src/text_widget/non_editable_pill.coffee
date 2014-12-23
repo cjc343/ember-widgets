@@ -16,6 +16,7 @@ Ember.Widgets.BaseNonEditablePill = Ember.Controller.extend Ember.Widgets.DomHel
 
   # Configure the parameters of the pill, e.g. by displaying a modal with input options that are
   # then stored in @get('params')
+  configurable: false
   configure: ->
     @send 'modalConfirm'  # No configuration by default
 
@@ -40,10 +41,14 @@ Ember.Widgets.BaseNonEditablePill = Ember.Controller.extend Ember.Widgets.DomHel
   render: ->
     span = @createElementsFromString("<span></span>")
     span.addClass('non-editable')
+    if @get('configurable')
+      span.addClass 'configurable'
+
     span.attr('title': @get('name'))
+    span.attr('contentEditable', false)
     # include all params as data-attributes
     for key, value of @get('params')
-      span.attr('data-' + key.dasherize(), value)
+      span.attr('data-' + Ember.String.dasherize(key), value)
     @set 'pillElement', span
     @updateContent(span)
     return span[0]
@@ -56,6 +61,7 @@ Ember.Widgets.NonEditableTextPill = Ember.Widgets.BaseNonEditablePill.extend
   result: ->
     @get('params.text')
 
+  configurable: true
   configure: ->
     modal = Ember.Widgets.ModalComponent.popup
       content: this
@@ -63,7 +69,7 @@ Ember.Widgets.NonEditableTextPill = Ember.Widgets.BaseNonEditablePill.extend
       confirm: "modalConfirm"
       cancel: "modalCancel"
       contentViewClass: Ember.View.extend
-        templateName: 'non_editable_text_pill_configuration'
+        templateName: 'non-editable-text-pill-configuration'
       headerText: @get('name')
       confirmText: "Insert"
 
@@ -75,16 +81,19 @@ Ember.Widgets.TodaysDatePill = Ember.Widgets.BaseNonEditablePill.extend
 
 
 Ember.Widgets.PillSelect = Ember.Widgets.SelectComponent.extend
-  templateName: 'text_editor_pill_menu'
+  templateName: 'text-editor-pill-menu'
   isSelect: true
   showButton: true
 
 
 Ember.Widgets.PillInsertMixin = Ember.Mixin.create
-  pillOptions: [Ember.Widgets.TodaysDatePill, Ember.Widgets.NonEditableTextPill]
+  pillOptions: Ember.A [
+    Ember.Widgets.TodaysDatePill
+    Ember.Widgets.NonEditableTextPill
+  ]
 
   _pillOptions : Ember.computed ->
-    @getWithDefault('pillOptions', []).map (option) =>
+    Ember.A @getWithDefault('pillOptions', []).map (option) =>
       label: option.create().name
       value: option
   .property 'pillOptions'
