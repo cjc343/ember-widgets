@@ -10,7 +10,7 @@ Ember.Widgets.MultiSelectOptionView = Ember.View.extend
 
   labelPathDidChange: Ember.observer ->
     labelPath = @get 'labelPath'
-    path = if labelPath then "context.#{labelPath}" else 'context'
+    path = if labelPath then "content.#{labelPath}" else 'context'
     Ember.defineProperty(this, 'label', Ember.computed.alias(path))
     @notifyPropertyChange 'label'
   , 'context', 'labelPath'
