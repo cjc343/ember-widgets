@@ -30,7 +30,7 @@ Ember.Component.extend Ember.Widgets.StyleBindingsMixin,
   close: Ember.K
 
   headerViewClass: Ember.View.extend
-    templateName: 'modal_header'
+    template: Ember.Handlebars.compile('<button type="button" class="close" {{action "sendClose"}}>&times;</button><h4 class="modal-title">{{headerText}}</h4>')
 
   contentViewClass: Ember.View.extend
     template: Ember.Handlebars.compile("<p>{{content}}</p>")
