@@ -107,6 +107,14 @@ Ember.AddeparMixins.ResizeHandlerMixin,
   # possibly says 'create item' or something along that line
   selectMenuView: null
 
+  # This doesn't clean correctly if `optionLabelPath` changes
+  willDestroy: ->
+    propertyName = 'contentProxy'
+    if @cacheFor propertyName
+      contentProxy = @get propertyName
+      contentProxy.destroy()
+    @_super()
+
   updateDropdownLayout: Ember.observer ->
     return if (@get('_state') or @get('state')) isnt 'inDOM' or @get('showDropdown') is no
 
@@ -183,7 +191,9 @@ Ember.AddeparMixins.ResizeHandlerMixin,
     # to finishes before trying to focus the input. Otherwise, focus when be
     # "stolen" from us.
     showDropdownDidChange: Ember.observer ->
-      Ember.run.schedule 'afterRender', this, ->
+      # when closing, don't need to focus the now-hidden search box
+      if @get('parentView.showDropdown')
+        Ember.run.schedule 'afterRender', this, ->
           @$().focus() if (@get('_state') or @get('state')) is 'inDOM'
     , 'parentView.showDropdown'
 
@@ -202,24 +212,29 @@ Ember.AddeparMixins.ResizeHandlerMixin,
   .property 'sortLabels', 'filteredContent', 'sortedFilteredContent'
 
   contentProxy: Ember.computed ->
-    matcher = (searchText, item) => @matcher(searchText, item)
     optionLabelPath = @get('optionLabelPath')
-    query = @get('query')
 
     ContentProxy = Ember.ObjectProxy.extend
+      _select: null
+      content: Ember.computed.alias '_select.content'
+      query: Ember.computed.alias '_select.query'
+
       filteredContent:  Ember.computed ->
+        selectComponent = @get('_select')
+        query = @get 'query'
+
         (@get('content') or []).filter (item) ->
-          matcher(query, item)
-      .property("content.@each.#{optionLabelPath}")
+          selectComponent.matcher(query, item)
+      .property "content.@each.#{optionLabelPath}", 'query'
 
       sortedFilteredContent: Ember.computed ->
         _.sortBy @get('filteredContent'), (item) =>
           Ember.get(item, optionLabelPath)?.toLowerCase()
-      .property("filteredContent")
+      .property 'filteredContent'
 
     ContentProxy.create
-      content: @get('content')
-  .property 'content', 'optionLabelPath', 'query'
+      _select: this
+  .property 'optionLabelPath'
 
   filteredContent: Ember.computed.alias 'contentProxy.filteredContent'
   sortedFilteredContent: Ember.computed.alias 'contentProxy.sortedFilteredContent'
@@ -243,7 +258,10 @@ Ember.AddeparMixins.ResizeHandlerMixin,
     result
   .property 'preparedContent', 'optionGroupPath', 'labels.[]'
 
-  hasNoResults: Ember.computed.empty 'filteredContent'
+  isLoading: no
+  isLoaded: Ember.computed.not('isLoading')
+  filteredContentIsEmpty: Ember.computed.empty 'filteredContent'
+  hasNoResults: Ember.computed.and('isLoaded', 'filteredContentIsEmpty')
 
   value: Ember.computed (key, value) ->
     if arguments.length is 2 # setter
