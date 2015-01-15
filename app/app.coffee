@@ -18,15 +18,8 @@ require 'build/app/views/ember_widgets'
 App.Router.map ->
   @route 'license'
   @resource 'emberWidgets', path: '/ember-widgets', ->
-    @route 'overview'
-    @route 'documentation'
-    @route 'accordion'
-    @route 'carousel'
     @route 'modal'
     @route 'popover'
-    @route 'select'
-    @route 'colorPicker'
-    @route 'radioButton'
 
 App.IndexRoute = Ember.Route.extend
   beforeModel: -> @transitionTo('emberWidgets.overview')
@@ -48,9 +41,6 @@ App.CustomPopoverContentView = Ember.View.extend
 
 App.CustomModalContentView = Ember.View.extend
   templateName: 'custom-modal-content'
-
-App.EmberWidgetsSelectRoute = Ember.Route.extend
-  model: -> window.countries
 
 App.EmberWidgetsModalRoute = Ember.Route.extend
   actions:
