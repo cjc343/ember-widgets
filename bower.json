@@ -24,10 +24,9 @@
   ],
   "dependencies": {
     "bootstrap": "~3.3.1",
-    "ember": "beta",
+    "ember": "~1.10.0",
     "jquery": "~1.11.1",
     "jquery-ui": "1.10.1",
-    "handlebars": "2.0.0",
     "lodash": "~1.2.1"
   },
   "devDependencies": {
@@ -38,7 +37,7 @@
     "jquery-browser": "jquery.browser#~0.0.4",
     "qunit": "~1.12.0",
     "rangy": "~1.2.3",
-    "list-view": "2270c05493"
+    "list-view": "03c21df9a557be7fb0811bacbf9ad644eb4eafd6"
   },
   "exportsOverride": {
     "bootstrap": {
@@ -71,7 +70,6 @@
     }
   },
   "resolutions": {
-    "jquery": "~1.11.1",
-    "ember": "~1.9.0"
+    "jquery": "~1.11.1"
   }
 }
